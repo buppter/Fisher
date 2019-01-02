@@ -1,5 +1,6 @@
 from flask import jsonify, request
 
+from app.forms.book import SearchForm
 from . import web
 from helper import is_isbn_or_key
 from yushu_book import YuShuBook
@@ -12,14 +13,23 @@ def search():
     page: 页数
     ?q=python&count=1
     """
-    q = request.args['q']
-    page = request.args['page']
+    # q = request.args['q']
+    # page = request.args['page']
 
-    isbn_or_key = is_isbn_or_key(q)
+    form = SearchForm(request.args)
 
-    if isbn_or_key == 'isbn':
-        result = YuShuBook.search_by_isbn(q)
+    if form.validate():
+        q = form.q.data.strip()
+        page = form.page.data
+
+        isbn_or_key = is_isbn_or_key(q)
+
+        if isbn_or_key == 'isbn':
+            result = YuShuBook.search_by_isbn(q)
+        else:
+            result = YuShuBook.search_by_keyword(q, page)
+
+        return jsonify(result)
+
     else:
-        result = YuShuBook.search_by_keyword(q)
-
-    return jsonify(result)
+        return jsonify(form.errors)
