@@ -1,4 +1,5 @@
-from flask import render_template, request, redirect, url_for
+from flask import render_template, request, redirect, url_for, flash
+from flask_login import login_user
 
 from app.forms.register import RegisterForm, LoginForm
 from app.models.base import db
@@ -18,7 +19,7 @@ def register():
         db.session.add(user)
         db.session.commit()
 
-        redirect(url_for('web.login'))
+        return redirect(url_for('web.login'))
 
     return render_template('auth/register.html', form=form)
 
@@ -28,8 +29,17 @@ def login():
     form = LoginForm(request.form)
 
     if request.method == "POST" and form.validate():
+        user = User.query.filter_by(email=form.email.data).first()
+        if user and user.check_password(form.password.data):
+            login_user(user, remember=True)
+            next = request.args.get('next')
+            if not next and next.stratswith('/'):
+                next = url_for('web.index')
+            return redirect(next)
+        else:
+            flash("账号不存在或密码错误")
         pass
-    return render_template('auth/login.html', form={'data':{}})
+    return render_template('auth/login.html', form=form)
 
 
 @web.route('/reset/password', methods=['GET', 'POST'])
