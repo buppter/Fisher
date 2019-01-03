@@ -12,6 +12,8 @@ class BookViewModel:
         self.price = book['price']
         self.isbn = book['isbn']
         self.summary = book['summary']
+        self.pubdate = book['pubdate']
+        self.binding = book['binding']
 
     @property
     def intro(self):
