@@ -1,11 +1,17 @@
 # -*- coding: utf-8 -*-
+from math import floor
+
+from flask import current_app
 from flask_login import UserMixin
 from sqlalchemy import Column, Integer, String, Boolean, Float
 from werkzeug.security import generate_password_hash, check_password_hash
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 
 from app import login_manager
+from app.libs.enums import PendingStatus
 from app.libs.helper import is_isbn_or_key
-from app.models.base import Base
+from app.models.base import Base, db
+from app.models.drift import Drift
 from app.models.gift import Gift
 from app.models.wish import Wish
 from app.spider.yushu_book import YuShuBook
@@ -24,6 +30,14 @@ class User(Base, UserMixin):
     beans = Column(Float, default=0)
     send_counter = Column(Integer, default=0)
     receive_counter = Column(Integer, default=0)
+
+    def can_send_drift(self):
+        if self.beans <= 1:
+            return False
+        success_gifts_count = Gift.query.filter_by(uid=self.id, launched=True).count()
+        success_receive_count = Drift.query.filter_by(requester_id=self.id, pending=PendingStatus.success).count()
+
+        return True if floor(success_receive_count / 2) <= floor(success_gifts_count) else False
 
     @property
     def password(self):
@@ -54,6 +68,35 @@ class User(Base, UserMixin):
             return True
         else:
             return False
+
+    def generate_token(self, expiration=6000 * 365):
+        s = Serializer(current_app.config['SECRET_KEY'], expiration)
+        return s.dumps({'id': self.id}).decode('utf-8')
+
+    @staticmethod
+    def reset_password(token, new_password):
+        s = Serializer(current_app.config['SECRET_KEY'])
+        try:
+            a = token.encode('utf-8')
+            data = s.loads(a)
+        except:
+            return False
+        uid = data.get('id')
+
+        with db.auto_commit():
+            user = User.query.get(uid)
+            user.password = new_password
+
+        return True
+
+    @property
+    def summary(self):
+        return dict(
+            nickname=self.nickname,
+            beans=self.beans,
+            email=self.email,
+            send_receive=str(self.send_counter) + '/' + str(self.receive_counter)
+        )
 
 
 @login_manager.user_loader
