@@ -1,3 +1,6 @@
+from app.view_models.book import BookViewModel
+
+
 class TradeInfo:
     def __init__(self, goods):
         self.total = 0
@@ -9,8 +12,8 @@ class TradeInfo:
         self.trades = [self.__map_to_trade(single) for single in goods]
 
     def __map_to_trade(self, single):
-        if single.create_dateime:
-            time = single.create_dateime.strftime('%Y-%m-%d')
+        if single.create_datetime:
+            time = single.create_datetime.strftime('%Y-%m-%d')
         else:
             time = '未知'
 
@@ -19,3 +22,33 @@ class TradeInfo:
             time=time,
             id=single.id
         )
+
+
+class MyTrades:
+
+    def __init__(self, trades_of_mine, trade_count_list):
+        self.trades = []
+
+        self.__trades_of_mine = trades_of_mine
+        self.__trade_count_list = trade_count_list
+        self.trades = self.__parse()
+
+    def __parse(self):
+        temp_trades = []
+        for gift in self.__trades_of_mine:
+            my_gift = self.__matching(gift)
+            temp_trades.append(my_gift)
+        return temp_trades
+
+    def __matching(self, gift):
+        count = 0
+        for trade_count in self.__trade_count_list:
+            if gift.isbn == trade_count['isbn']:
+                count = trade_count['count']
+
+        r = {
+            'count': count,
+            'book': BookViewModel(gift.book),
+            'id': gift.id
+        }
+        return r
