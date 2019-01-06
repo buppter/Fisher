@@ -79,6 +79,9 @@ def mailed_drift(did):
         drift = Drift.query.filter_by(gifter_id=current_user.id, id=did).first_or_404()
         drift.pending = PendingStatus.success
         current_user.beans += 1
+        current_user.send_counter += 1
+        wisher = User.query.filter_by(id=drift.requester_id).first_or_404()
+        wisher.receive_counter += 1
         gift = Gift.query.filter_by(id=drift.gift_id).first_or_404()
         gift.launched = True
         Wish.query.filter_by(isbn=drift.isbn, uid=drift.requester_id, launched=False).update(
